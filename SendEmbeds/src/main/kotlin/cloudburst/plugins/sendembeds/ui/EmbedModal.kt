@@ -204,7 +204,7 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
                         }
                     })
                 } catch (e: Throwable) {
-                    Utils.showToast("An error occured")
+                    Utils.showToast("An error occurred: ${e.message}")
                     logger.error(e)
                 }
                 dismiss()
@@ -234,79 +234,114 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
     }
 
     private fun sendWebhookEmbed(webhook: String, author: String, title: String, content: String, url: String, imageUrl: String, color: Int)  {
-
-        Http.Request("https://discord.com/api/%s".format(webhook), "POST")
-            .executeWithJson(WebhookMessage(
-                null, 
-                listOf(
-                    Embed(
-                        Author(author),
-                        title, 
-                        content,
-                        url,
-                        EmbedImage(imageUrl),
-                        color
+        try {
+            Http.Request("https://discord.com/api/%s".format(webhook), "POST")
+                .setHeader("Content-Type", "application/json")
+                .executeWithJson(WebhookMessage(
+                    null, 
+                    listOf(
+                        Embed(
+                            Author(author),
+                            title, 
+                            content,
+                            url,
+                            if (imageUrl.isEmpty()) null else EmbedImage(imageUrl),
+                            color
+                        )
                     )
-                )
-            ))
+                ))
+        } catch (e: Throwable) {
+            Utils.showToast("Error sending webhook: ${e.message}")
+            logger.error(e)
+        }
     }
 
     private fun sendNonBotEmbed(site: String, author: String, title: String, content: String, url: String, imageUrl: String, color: Int) {
-        val msg = if (plugin.settings.getBool("SendEmbeds_NQNCompatibility", true)) 
-            "[](https://%s/?author=%s&title=%s&description=%s&color=%06x&image=%s&redirect=%s)".format(site, URLEncoder.encode(author, "utf-8"), URLEncoder.encode(title, "utf-8"), URLEncoder.encode(content, "utf-8"), color, URLEncoder.encode(imageUrl, "utf-8"), URLEncoder.encode(url, "utf-8"))
-        else
-            "https://%s/?author=%s&title=%s&description=%s&color=%06x&image=%s&redirect=%s".format(site, URLEncoder.encode(author, "utf-8"), URLEncoder.encode(title, "utf-8"), URLEncoder.encode(content, "utf-8"), color, URLEncoder.encode(imageUrl, "utf-8"), URLEncoder.encode(url, "utf-8"))
-        val message = RestAPIParams.Message(
-            msg,
-            NonceGenerator.computeNonce(ClockFactory.get()).toString(),
-            null,
-            null,
-            emptyList(),
-            null,
-            RestAPIParams.Message.AllowedMentions(
-                    emptyList(),
-                    emptyList(),
-                    emptyList(),
-                    false
-            ),
-            null,
-            null
-        )
-        RestAPI.api.sendMessage(channelId, message).subscribe(createActionSubscriber({ }))
+        try {
+            // Create safe parameters by ensuring empty strings are properly handled
+            val safeAuthor = if (author.isEmpty()) " " else author
+            val safeTitle = if (title.isEmpty()) " " else title
+            val safeContent = if (content.isEmpty()) " " else content
+            val safeUrl = url // Can be empty
+            val safeImageUrl = imageUrl // Can be empty
+            
+            val embedUrl = "https://%s/?author=%s&title=%s&description=%s&color=%06x%s%s".format(
+                site,
+                URLEncoder.encode(safeAuthor, "UTF-8"),
+                URLEncoder.encode(safeTitle, "UTF-8"),
+                URLEncoder.encode(safeContent, "UTF-8"),
+                color,
+                if (safeImageUrl.isNotEmpty()) "&image=${URLEncoder.encode(safeImageUrl, "UTF-8")}" else "",
+                if (safeUrl.isNotEmpty()) "&redirect=${URLEncoder.encode(safeUrl, "UTF-8")}" else ""
+            )
+            
+            val msg = if (plugin.settings.getBool("SendEmbeds_NQNCompatibility", true)) 
+                "[](${embedUrl})"
+            else
+                embedUrl
+                
+            val message = RestAPIParams.Message(
+                msg,
+                NonceGenerator.computeNonce(ClockFactory.get()).toString(),
+                null,
+                null,
+                emptyList(),
+                null,
+                RestAPIParams.Message.AllowedMentions(
+                        emptyList(),
+                        emptyList(),
+                        emptyList(),
+                        false
+                ),
+                null,
+                null
+            )
+            RestAPI.api.sendMessage(channelId, message).subscribe(createActionSubscriber({ 
+                Utils.showToast("Embed sent successfully!")
+            }))
+        } catch (e: Throwable) {
+            Utils.showToast("Error sending embed: ${e.message}")
+            logger.error(e)
+        }
     }
 
     private fun onSend(mode: String, author: String, title: String, content: String, url: String, imageUrl: String, color: String) {
-        if (plugin.extraFunctions.containsKey(mode)) {
-            plugin.extraFunctions.get(mode)?.invoke(
-                channelId,
-                author, 
-                title, 
-                content, 
-                url, 
-                imageUrl,
-                color
-            )
-        }
-        else if (mode.startsWith("webhooks/")) {
-            sendWebhookEmbed(
-                mode,
-                author, 
-                title, 
-                content, 
-                url, 
-                imageUrl,
-                toColorInt(color)
-            )
-        } else {
-            sendNonBotEmbed(
-                mode,
-                author, 
-                title, 
-                content, 
-                url, 
-                imageUrl,
-                toColorInt(color)
-            )
+        try {
+            if (plugin.extraFunctions.containsKey(mode)) {
+                plugin.extraFunctions.get(mode)?.invoke(
+                    channelId,
+                    author, 
+                    title, 
+                    content, 
+                    url, 
+                    imageUrl,
+                    color
+                )
+            }
+            else if (mode.startsWith("webhooks/")) {
+                sendWebhookEmbed(
+                    mode,
+                    author, 
+                    title, 
+                    content, 
+                    url, 
+                    imageUrl,
+                    toColorInt(color)
+                )
+            } else {
+                sendNonBotEmbed(
+                    mode,
+                    author, 
+                    title, 
+                    content, 
+                    url, 
+                    imageUrl,
+                    toColorInt(color)
+                )
+            }
+        } catch (e: Throwable) {
+            Utils.showToast("Error: ${e.message}")
+            logger.error(e)
         }
     }
 
