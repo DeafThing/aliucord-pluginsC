@@ -37,13 +37,13 @@ class SendEmbeds : Plugin() {
     //                                          channel,  author,   title, content, url,    imageUrl, color
     public val extraFunctions = hashMapOf<String, (Long,   String, String, String,  String, String,   String) -> Unit>()
     
-    // Updated working embed sites
+    // Use 'direct webhook' as the main method
+    // Make webhook the default when webhook permissions exist
     public val modes = mutableListOf(
-        "embed.rauf.workers.dev",
-        "embed.rauf.wtf",
-        "rauf.wtf/embed",
-        "embed.riverside.rocks", // New alternative
-        "embeds.protocol.love"   // New alternative
+        "directwebhook", // New mode that uses webhooks directly without external services
+        "embed.rauf.workers.dev", // Keep for compatibility
+        "discohook.org", // Alternative service
+        "webhook.lewisakura.moe" // Another alternative
     )
     
     public val makeModal = ::createModal
