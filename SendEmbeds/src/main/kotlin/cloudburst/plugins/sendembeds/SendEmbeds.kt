@@ -36,12 +36,17 @@ class SendEmbeds : Plugin() {
     
     //                                          channel,  author,   title, content, url,    imageUrl, color
     public val extraFunctions = hashMapOf<String, (Long,   String, String, String,  String, String,   String) -> Unit>()
+    
+    // Updated working embed sites
     public val modes = mutableListOf(
         "embed.rauf.workers.dev",
         "embed.rauf.wtf",
-        "rauf.wtf/embed"
+        "rauf.wtf/embed",
+        "embed.riverside.rocks", // New alternative
+        "embeds.protocol.love"   // New alternative
     )
-    public val makeModal = ::createModal // bruh momento
+    
+    public val makeModal = ::createModal
 
     init {
         settingsTab = SettingsTab(SendEmbedsSettings::class.java, SettingsTab.Type.BOTTOM_SHEET).withArgs(this)
@@ -82,7 +87,7 @@ class SendEmbeds : Plugin() {
                         }
                         view.addView(btn)
                     }
-                }  catch (ignored: Throwable) {
+                } catch (ignored: Throwable) {
                     logger.error(ignored)
                 }
             })
