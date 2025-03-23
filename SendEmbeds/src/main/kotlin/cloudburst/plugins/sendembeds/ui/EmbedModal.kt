@@ -254,18 +254,18 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
     }
 
     private fun createWebhook(name: String): Webhook? {
-        try {
-            val jsonBody = "{\"name\":\"${name}\"}"
-            val response = Http.Request.newDiscordRequest("/channels/%d/webhooks".format(channelId), "POST")
-                .setRequestBody(jsonBody)
-                .execute()
-                .json(Webhook::class.java)
-            return response
-        } catch (e: Throwable) {
-            logger.error(e)
-            Utils.showToast("Failed to create webhook: ${e.message}")
-        }
-        return null
+    try {
+        val jsonBody = "{\"name\":\"${name}\"}"
+        val response = Http.Request.newDiscordRequest("/channels/%d/webhooks".format(channelId), "POST")
+            .setHeader("Content-Type", "application/json")
+            .executeWithBody(jsonBody)
+            .json(Webhook::class.java)
+        return response
+    } catch (e: Throwable) {
+        logger.error(e)
+        Utils.showToast("Failed to create webhook: ${e.message}")
+    }
+    return null
     }
 
     private fun sendWebhookEmbed(webhook: String, author: String, title: String, content: String, url: String, imageUrl: String, color: Int)  {
