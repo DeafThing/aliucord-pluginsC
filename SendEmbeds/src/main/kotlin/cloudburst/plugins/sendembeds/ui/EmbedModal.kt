@@ -64,6 +64,9 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
     }
 
     private val logger = Logger("SendEmbeds")
+    private var hasWebhookPermissions = false
+    private var defaultWebhook: Webhook? = null
+    private var allWebhooks = emptyArray<Webhook>()
 
     @SuppressLint("SetTextI18n")
     override fun onViewCreated(view: View, bundle: Bundle?) {
@@ -143,8 +146,25 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
             setMarginEnd(p)
         }
 
+        // Pre-fetch webhooks to check permissions
+        Utils.threadPool.execute {
+            try {
+                val perms = StoreStream.getPermissions()
+                hasWebhookPermissions = PermissionUtils.can(Permission.MANAGE_WEBHOOKS, perms.permissionsByChannel.get(channelId))
+                
+                if (hasWebhookPermissions) {
+                    allWebhooks = getWebhooks()
+                    if (allWebhooks.isNotEmpty()) {
+                        defaultWebhook = allWebhooks.firstOrNull()
+                    }
+                }
+            } catch (e: Throwable) {
+                logger.error(e)
+            }
+        }
+
         val modeInput = Button(context).apply { 
-            text = "embed.rauf.workers.dev"
+            text = if (modeOverride == null) "directwebhook" else modeOverride
             setBackgroundColor(ColorCompat.getThemedColor(view.getContext(), R.b.colorBackgroundTertiary))
             setOnClickListener {
                 Utils.threadPool.execute({
@@ -233,6 +253,21 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
         return emptyArray()
     }
 
+    private fun createWebhook(name: String): Webhook? {
+        try {
+            val jsonBody = "{\"name\":\"${name}\"}"
+            val response = Http.Request.newDiscordRequest("/channels/%d/webhooks".format(channelId), "POST")
+                .setRequestBody(jsonBody)
+                .execute()
+                .json(Webhook::class.java)
+            return response
+        } catch (e: Throwable) {
+            logger.error(e)
+            Utils.showToast("Failed to create webhook: ${e.message}")
+        }
+        return null
+    }
+
     private fun sendWebhookEmbed(webhook: String, author: String, title: String, content: String, url: String, imageUrl: String, color: Int)  {
         try {
             Http.Request("https://discord.com/api/%s".format(webhook), "POST")
@@ -250,48 +285,150 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
                         )
                     )
                 ))
+            Utils.showToast("Webhook embed sent successfully")
         } catch (e: Throwable) {
             Utils.showToast("Error sending webhook: ${e.message}")
             logger.error(e)
         }
     }
 
-    private fun sendNonBotEmbed(site: String, author: String, title: String, content: String, url: String, imageUrl: String, color: Int) {
+    private fun sendDirectWebhookEmbed(author: String, title: String, content: String, url: String, imageUrl: String, color: Int)  {
         try {
-            // Create safe parameters by ensuring empty strings are properly handled
-            val safeAuthor = if (author.isEmpty()) " " else author
-            val safeTitle = if (title.isEmpty()) " " else title
-            val safeContent = if (content.isEmpty()) " " else content
-            val safeUrl = url // Can be empty
-            val safeImageUrl = imageUrl // Can be empty
+            // Check if we have webhook permissions
+            if (!hasWebhookPermissions) {
+                Utils.showToast("You need webhook permissions to use direct webhook")
+                // Fall back to sendMessageEmbed
+                sendMessageEmbed(author, title, content, url, imageUrl, color)
+                return
+            }
+
+            // Get or create a webhook
+            var webhook = defaultWebhook
+            if (webhook == null || webhook.token == null) {
+                webhook = createWebhook("SendEmbeds")
+            }
+
+            if (webhook == null || webhook.token == null) {
+                Utils.showToast("Failed to create or use webhook")
+                // Fall back to sendMessageEmbed
+                sendMessageEmbed(author, title, content, url, imageUrl, color)
+                return
+            }
+
+            // Send the webhook
+            Http.Request(webhook.url, "POST")
+                .setHeader("Content-Type", "application/json")
+                .executeWithJson(WebhookMessage(
+                    null, 
+                    listOf(
+                        Embed(
+                            Author(author),
+                            title, 
+                            content,
+                            url,
+                            if (imageUrl.isEmpty()) null else EmbedImage(imageUrl),
+                            color
+                        )
+                    )
+                ))
+            Utils.showToast("Embed sent successfully")
+        } catch (e: Throwable) {
+            Utils.showToast("Error sending webhook: ${e.message}")
+            logger.error(e)
+            // Fall back to sendMessageEmbed
+            sendMessageEmbed(author, title, content, url, imageUrl, color)
+        }
+    }
+
+    private fun sendMessageEmbed(author: String, title: String, content: String, url: String, imageUrl: String, color: Int) {
+        try {
+            // Create a JSON-formatted message with embed details
+            val embedJson = """
+            {
+                "embed": {
+                    "author": { "name": "${author.replace("\"", "\\\"")}" },
+                    "title": "${title.replace("\"", "\\\"")}",
+                    "description": "${content.replace("\"", "\\\"").replace("\n", "\\n")}",
+                    "url": "${url.replace("\"", "\\\"")}",
+                    "color": ${color},
+                    ${if (imageUrl.isNotEmpty()) "\"image\": { \"url\": \"${imageUrl.replace("\"", "\\\"")}\" }" else ""}
+                }
+            }
+            """.trimIndent()
             
-            val embedUrl = "https://%s/?author=%s&title=%s&description=%s&color=%06x%s%s".format(
-                site,
-                URLEncoder.encode(safeAuthor, "UTF-8"),
-                URLEncoder.encode(safeTitle, "UTF-8"),
-                URLEncoder.encode(safeContent, "UTF-8"),
-                color,
-                if (safeImageUrl.isNotEmpty()) "&image=${URLEncoder.encode(safeImageUrl, "UTF-8")}" else "",
-                if (safeUrl.isNotEmpty()) "&redirect=${URLEncoder.encode(safeUrl, "UTF-8")}" else ""
-            )
-            
-            val msg = if (plugin.settings.getBool("SendEmbeds_NQNCompatibility", true)) 
-                "[](${embedUrl})"
-            else
-                embedUrl
-                
+            // Send as a normal message
             val message = RestAPIParams.Message(
-                msg,
+                embedJson,
                 NonceGenerator.computeNonce(ClockFactory.get()).toString(),
                 null,
                 null,
                 emptyList(),
                 null,
                 RestAPIParams.Message.AllowedMentions(
-                        emptyList(),
-                        emptyList(),
-                        emptyList(),
-                        false
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    false
+                ),
+                null,
+                null
+            )
+            RestAPI.api.sendMessage(channelId, message).subscribe(createActionSubscriber({ 
+                Utils.showToast("Embed message sent!")
+            }))
+        } catch (e: Throwable) {
+            Utils.showToast("Error sending message: ${e.message}")
+            logger.error(e)
+        }
+    }
+
+    private fun sendNonBotEmbed(site: String, author: String, title: String, content: String, url: String, imageUrl: String, color: Int) {
+        try {
+            // Different processing for different sites
+            val msg = when (site) {
+                "discohook.org" -> {
+                    val jsonData = """
+                    {
+                      "content": null,
+                      "embeds": [{
+                        "title": "${title.replace("\"", "\\\"")}",
+                        "description": "${content.replace("\"", "\\\"").replace("\n", "\\n")}",
+                        "color": ${color},
+                        "author": { "name": "${author.replace("\"", "\\\"")}" },
+                        "url": "${url.replace("\"", "\\\"")}",
+                        ${if (imageUrl.isNotEmpty()) "\"image\": { \"url\": \"${imageUrl.replace("\"", "\\\"")}\" }" else ""}
+                      }]
+                    }
+                    """.trimIndent()
+                    
+                    "https://discohook.org/?data=" + URLEncoder.encode(jsonData, "UTF-8")
+                }
+                "webhook.lewisakura.moe" -> {
+                    "https://webhook.lewisakura.moe/api/webhook?author=${URLEncoder.encode(author, "UTF-8")}&authorIcon=&title=${URLEncoder.encode(title, "UTF-8")}&description=${URLEncoder.encode(content, "UTF-8")}&color=${color.toString(16)}&url=${URLEncoder.encode(url, "UTF-8")}&imageUrl=${URLEncoder.encode(imageUrl, "UTF-8")}"
+                }
+                else -> {
+                    // Default format for other services (rauf embed, etc.)
+                    "https://${site}/?author=${URLEncoder.encode(author, "UTF-8")}&title=${URLEncoder.encode(title, "UTF-8")}&description=${URLEncoder.encode(content, "UTF-8")}&color=${color.toString(16)}${if (imageUrl.isNotEmpty()) "&image=${URLEncoder.encode(imageUrl, "UTF-8")}" else ""}${if (url.isNotEmpty()) "&redirect=${URLEncoder.encode(url, "UTF-8")}" else ""}"
+                }
+            }
+            
+            val finalMsg = if (plugin.settings.getBool("SendEmbeds_NQNCompatibility", true)) 
+                "[](${msg})"
+            else
+                msg
+                
+            val message = RestAPIParams.Message(
+                finalMsg,
+                NonceGenerator.computeNonce(ClockFactory.get()).toString(),
+                null,
+                null,
+                emptyList(),
+                null,
+                RestAPIParams.Message.AllowedMentions(
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    false
                 ),
                 null,
                 null
@@ -328,7 +465,18 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
                     imageUrl,
                     toColorInt(color)
                 )
-            } else {
+            }
+            else if (mode == "directwebhook") {
+                sendDirectWebhookEmbed(
+                    author,
+                    title,
+                    content,
+                    url,
+                    imageUrl,
+                    toColorInt(color)
+                )
+            }
+            else {
                 sendNonBotEmbed(
                     mode,
                     author, 
