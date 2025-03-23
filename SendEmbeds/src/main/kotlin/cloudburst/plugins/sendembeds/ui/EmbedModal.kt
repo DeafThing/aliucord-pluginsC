@@ -400,19 +400,14 @@ class EmbedModal(val channelId: Long, val plugin: SendEmbeds, private val modeOv
             // Different processing for different sites
             val embedUrl = when (site) {
                 "discohook.org" -> {
-                    val jsonData = """
-                    {
-                      "content": null,
-                      "embeds": [{
-                        "title": "${title.replace("\"", "\\\"")}",
-                        "description": "${content.replace("\"", "\\\"").replace("\n", "\\n")}",
-                        "color": ${color},
-                        "author": { "name": "${author.replace("\"", "\\\"")}" },
-                        "url": "${url.replace("\"", "\\\"")}",
-                        ${if (imageUrl.isNotEmpty()) "\"image\": { \"url\": \"${imageUrl.replace("\"", "\\\"")}\" }" else ""}
-                      }]
-                    }
-                    """.trimIndent()
+                    val jsonData = "{\"content\":null,\"embeds\":[{" +
+    "\"title\":\"${title.replace("\"", "\\\"")}\","+
+    "\"description\":\"${content.replace("\"", "\\\"").replace("\n", "\\n")}\","+
+    "\"color\":${color},"+
+    "\"author\":{\"name\":\"${author.replace("\"", "\\\"")}\"},"+
+    "\"url\":\"${url.replace("\"", "\\\"")}\","+
+    "${if (imageUrl.isNotEmpty()) "\"image\":{\"url\":\"${imageUrl.replace("\"", "\\\"")}\"}," else ""}"+
+    "}]}"
                     
                     "https://discohook.org/?data=" + URLEncoder.encode(jsonData, "UTF-8")
                 }
