@@ -4,7 +4,6 @@ aliucord.changelog.set(
         """
         # 1.1.3
         * added colour pickers to make it easier to get the color
-        * removed input box(es) for the colours to now only use colour pickers
-        * added support for foreground colour (text)
+        * removed input boxes for the colours to now only use colour pickers opting for buttons instead
         """.trimIndent()
 )
