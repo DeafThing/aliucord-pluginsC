@@ -11,6 +11,7 @@ import android.widget.TextView
 import com.lytefast.flexinput.R
 import com.aliucord.views.TextInput
 import android.text.InputType
+import com.discord.utilities.colors.ColorPickerUtils
 import android.graphics.Color
 import android.widget.Button
 
@@ -78,10 +79,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
     }
 
     private fun colorPicker(key: String) {
-        var initialColor = settings.getInt(key, Color.BLACK)
-        if (initialColor == 0) {
-            initialColor = Color.BLACK
-        }
+        val initialColor = settings.getInt(key, Color.BLACK)
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
