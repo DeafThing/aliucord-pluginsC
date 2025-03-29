@@ -13,7 +13,7 @@ import com.aliucord.views.TextInput
 import android.text.InputType
 import com.discord.utilities.colors.ColorPickerUtils
 import android.graphics.Color
-import android.widget.ImageView
+import android.widget.Button
 
 class Settings(private val settings: SettingsAPI) : SettingsPage() {
     override fun onViewBound(view: View) {
@@ -48,37 +48,29 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         addView(padding)
 
         addView(TextView(view.context, null, 0, R.i.UiKit_TextView).apply { 
-            text = "Set color to 0 if you wish to disable changing colors. Click the edit icon to open a color picker."
+            text = "Set color to 0 if you wish to disable changing colors."
             setPadding(p, p, p, p)
         })
 
-        var selfFg: View? = null
-        selfFg = TextInput(view.context, "Self Foreground Color", settings.getInt("SelfFg", 0).toString(), View.OnClickListener {
-            if (selfFg != null) colorPicker(selfFg as TextInput)
-        }).apply {
-            editText.inputType = InputType.TYPE_CLASS_NUMBER
-            editText.maxLines = 1
-            setThemedEndIcon(R.e.ic_theme_24dp)
-            setPadding(p, p, p, p)
+        val selfFgButton = Button(view.context).apply {
+            text = "Select Self Foreground Color"
+            setOnClickListener {
+                colorPicker("SelfFg")
+            }
         }
-        addView(selfFg)
+        addView(selfFgButton)
 
-        var selfBg: View? = null
-        selfBg = TextInput(view.context, "Self Background Color", settings.getInt("SelfBg", 0).toString(), View.OnClickListener {
-            if (selfBg != null) colorPicker(selfBg as TextInput)
-        }).apply {
-            editText.inputType = InputType.TYPE_CLASS_NUMBER
-            editText.maxLines = 1
-            setThemedEndIcon(R.e.ic_theme_24dp)
-            setPadding(p, p, p, p)
+        val selfBgButton = Button(view.context).apply {
+            text = "Select Self Background Color"
+            setOnClickListener {
+                colorPicker("SelfBg")
+            }
         }
-        addView(selfBg)
+        addView(selfBgButton)
 
         setOnBackPressed {
             try {
                 settings.setInt("Padding", padding.editText.text.toString().toInt())
-                settings.setInt("SelfFg", selfFg.editText.text.toString().toInt())
-                settings.setInt("SelfBg", selfBg.editText.text.toString().toInt())
             } catch(e: Throwable) {
                 Utils.showToast(e.message.toString())
             }
@@ -86,20 +78,20 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         }
     }
 
-    private fun colorPicker(input: TextInput) {
+    private fun colorPicker(key: String) {
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
             Color.BLACK
         )
         builder.arguments?.putBoolean("alpha", true)
-        builder.k = object: b.k.a.a.f { // color picker listener i guess
+        builder.k = object: b.k.a.a.f { // color picker listener
             override fun onColorReset(i: Int) { }
 
             override fun onColorSelected(i: Int, i2: Int) {
                 try {
-                    input.editText.setText(i2.toString())
-                    input.editText.setTextColor(i2)  // Set the color preview
+                    settings.setInt(key, i2)
+                    Utils.showToast("Color selected: $i2")
                 } catch(e: Throwable) {
                     Utils.showToast(e.message.toString())
                 }
