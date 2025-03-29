@@ -9,11 +9,9 @@ import com.aliucord.widgets.LinearLayout
 import com.aliucord.api.SettingsAPI
 import android.widget.TextView
 import com.lytefast.flexinput.R
-import com.aliucord.views.TextInput
-import android.text.InputType
+import android.widget.Button
 import com.discord.utilities.colors.ColorPickerUtils
 import android.graphics.Color
-import android.widget.Button
 
 class Settings(private val settings: SettingsAPI) : SettingsPage() {
     override fun onViewBound(view: View) {
@@ -54,16 +52,18 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
 
         val selfFgButton = Button(view.context).apply {
             text = "Select Self Foreground Color"
+            setBackgroundColor(settings.getInt("SelfFg", Color.BLACK))
             setOnClickListener {
-                colorPicker("SelfFg")
+                colorPicker("SelfFg", this)
             }
         }
         addView(selfFgButton)
 
         val selfBgButton = Button(view.context).apply {
             text = "Select Self Background Color"
+            setBackgroundColor(settings.getInt("SelfBg", Color.BLACK))
             setOnClickListener {
-                colorPicker("SelfBg")
+                colorPicker("SelfBg", this)
             }
         }
         addView(selfBgButton)
@@ -78,7 +78,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         }
     }
 
-    private fun colorPicker(key: String) {
+    private fun colorPicker(key: String, button: Button) {
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
@@ -91,6 +91,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
             override fun onColorSelected(i: Int, i2: Int) {
                 try {
                     settings.setInt(key, i2)
+                    button.setBackgroundColor(i2)
                     Utils.showToast("Color selected: $i2")
                 } catch(e: Throwable) {
                     Utils.showToast(e.message.toString())
