@@ -48,7 +48,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         addView(padding)
 
         addView(TextView(view.context, null, 0, R.i.UiKit_TextView).apply { 
-            text = "Set color to 0 if you wish to disable changing colors."
+            text = "Set the transparency to 100% to reset."
             setPadding(p, p, p, p)
         })
 
@@ -79,10 +79,11 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
     }
 
     private fun colorPicker(key: String) {
+        val initialColor = settings.getInt(key, Color.BLACK)
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
-            Color.BLACK
+            initialColor 
         )
         builder.arguments?.putBoolean("alpha", true)
         builder.k = object: b.k.a.a.f { // color picker listener
