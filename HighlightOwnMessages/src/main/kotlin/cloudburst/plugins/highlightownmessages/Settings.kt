@@ -2,8 +2,6 @@ package cloudburst.plugins.highlightownmessages
 
 import com.aliucord.fragments.SettingsPage
 import android.view.View
-import android.view.Gravity
-
 import com.aliucord.Utils
 import com.aliucord.utils.DimenUtils
 import com.discord.views.CheckedSetting
@@ -15,11 +13,11 @@ import com.aliucord.views.TextInput
 import android.text.InputType
 import com.discord.utilities.colors.ColorPickerUtils
 import android.graphics.Color
+import android.widget.ImageView
 
 class Settings(private val settings: SettingsAPI) : SettingsPage() {
     override fun onViewBound(view: View) {
         super.onViewBound(view)
-
         setActionBarTitle("HighlightOwnMessages")
         val p = DimenUtils.defaultPadding / 2
 
@@ -80,13 +78,12 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
                 settings.setInt("Padding", padding.editText.text.toString().toInt())
                 settings.setInt("SelfFg", selfFg.editText.text.toString().toInt())
                 settings.setInt("SelfBg", selfBg.editText.text.toString().toInt())
-            } catch(e:Throwable) {
+            } catch(e: Throwable) {
                 Utils.showToast(e.message.toString())
             }
             return@setOnBackPressed false
         }
     }
-
 
     private fun colorPicker(input: TextInput) {
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
@@ -101,7 +98,8 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
             override fun onColorSelected(i: Int, i2: Int) {
                 try {
                     input.editText.setText(i2.toString())
-                } catch(e:Throwable) {
+                    input.editText.setTextColor(i2)  // Set the color preview
+                } catch(e: Throwable) {
                     Utils.showToast(e.message.toString())
                 }
             }
