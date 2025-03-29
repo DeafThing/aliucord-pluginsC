@@ -9,9 +9,11 @@ import com.aliucord.widgets.LinearLayout
 import com.aliucord.api.SettingsAPI
 import android.widget.TextView
 import com.lytefast.flexinput.R
-import android.widget.Button
+import com.aliucord.views.TextInput
+import android.text.InputType
 import com.discord.utilities.colors.ColorPickerUtils
 import android.graphics.Color
+import android.widget.Button
 
 class Settings(private val settings: SettingsAPI) : SettingsPage() {
     override fun onViewBound(view: View) {
@@ -46,24 +48,22 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         addView(padding)
 
         addView(TextView(view.context, null, 0, R.i.UiKit_TextView).apply { 
-            text = "Set the transparency to 100% to reset."
+            text = "Set color to 0 if you wish to disable changing colors."
             setPadding(p, p, p, p)
         })
 
         val selfFgButton = Button(view.context).apply {
             text = "Select Self Foreground Color"
-            setBackgroundColor(settings.getInt("SelfFg", Color.BLACK))
             setOnClickListener {
-                colorPicker("SelfFg", this, settings.getInt("SelfFg", Color.BLACK))
+                colorPicker("SelfFg")
             }
         }
         addView(selfFgButton)
 
         val selfBgButton = Button(view.context).apply {
             text = "Select Self Background Color"
-            setBackgroundColor(settings.getInt("SelfBg", Color.BLACK))
             setOnClickListener {
-                colorPicker("SelfBg", this, settings.getInt("SelfBg", Color.BLACK))
+                colorPicker("SelfBg")
             }
         }
         addView(selfBgButton)
@@ -78,11 +78,11 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         }
     }
 
-    private fun colorPicker(key: String, button: Button, initialColor: Int) {
+    private fun colorPicker(key: String) {
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
-            initialColor
+            Color.BLACK
         )
         builder.arguments?.putBoolean("alpha", true)
         builder.k = object: b.k.a.a.f { // color picker listener
@@ -91,7 +91,6 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
             override fun onColorSelected(i: Int, i2: Int) {
                 try {
                     settings.setInt(key, i2)
-                    button.setBackgroundColor(i2)
                     Utils.showToast("Color selected: $i2")
                 } catch(e: Throwable) {
                     Utils.showToast(e.message.toString())
