@@ -46,7 +46,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         addView(padding)
 
         addView(TextView(view.context, null, 0, R.i.UiKit_TextView).apply { 
-            text = "Set color to 0 if you wish to disable changing colors."
+            text = "Set the transparency to 100% to reset."
             setPadding(p, p, p, p)
         })
 
@@ -54,7 +54,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
             text = "Select Self Foreground Color"
             setBackgroundColor(settings.getInt("SelfFg", Color.BLACK))
             setOnClickListener {
-                colorPicker("SelfFg", this)
+                colorPicker("SelfFg", this, settings.getInt("SelfFg", Color.BLACK))
             }
         }
         addView(selfFgButton)
@@ -63,7 +63,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
             text = "Select Self Background Color"
             setBackgroundColor(settings.getInt("SelfBg", Color.BLACK))
             setOnClickListener {
-                colorPicker("SelfBg", this)
+                colorPicker("SelfBg", this, settings.getInt("SelfBg", Color.BLACK))
             }
         }
         addView(selfBgButton)
@@ -78,11 +78,11 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
         }
     }
 
-    private fun colorPicker(key: String, button: Button) {
+    private fun colorPicker(key: String, button: Button, initialColor: Int) {
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
-            Color.BLACK
+            initialColor
         )
         builder.arguments?.putBoolean("alpha", true)
         builder.k = object: b.k.a.a.f { // color picker listener
