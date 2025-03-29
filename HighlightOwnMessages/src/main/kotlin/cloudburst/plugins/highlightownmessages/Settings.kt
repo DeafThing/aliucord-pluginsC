@@ -79,7 +79,12 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
     }
 
     private fun colorPicker(key: String) {
-        val initialColor = settings.getInt(key, Color.BLACK)
+        var initialColor = settings.getInt(key, Color.BLACK)
+        // Reset the color if transparency is 100%
+        if (Color.alpha(initialColor) == 0) {
+            initialColor = Color.BLACK
+            settings.setInt(key, initialColor)
+        }
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
