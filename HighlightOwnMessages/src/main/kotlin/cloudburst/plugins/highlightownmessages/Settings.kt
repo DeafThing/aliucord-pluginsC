@@ -11,7 +11,6 @@ import android.widget.TextView
 import com.lytefast.flexinput.R
 import com.aliucord.views.TextInput
 import android.text.InputType
-import com.discord.utilities.colors.ColorPickerUtils
 import android.graphics.Color
 import android.widget.Button
 
@@ -43,7 +42,6 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
             editText.inputType = InputType.TYPE_CLASS_NUMBER
             editText.maxLines = 1
             setPadding(p, p, p, p)
-            setThemedEndIcon(R.e.ic_theme_24dp)
         }
         addView(padding)
 
