@@ -42,6 +42,7 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
             editText.inputType = InputType.TYPE_CLASS_NUMBER
             editText.maxLines = 1
             setPadding(p, p, p, p)
+            setThemedEndIcon(R.e.ic_theme_24dp)
         }
         addView(padding)
 
@@ -77,7 +78,10 @@ class Settings(private val settings: SettingsAPI) : SettingsPage() {
     }
 
     private fun colorPicker(key: String) {
-        val initialColor = settings.getInt(key, Color.BLACK)
+        var initialColor = settings.getInt(key, Color.BLACK)
+        if (initialColor == 0) {
+            initialColor = Color.BLACK
+        }
         val builder = ColorPickerUtils.INSTANCE.buildColorPickerDialog(
             context, 
             Utils.getResId("color_picker_title", "string"), 
