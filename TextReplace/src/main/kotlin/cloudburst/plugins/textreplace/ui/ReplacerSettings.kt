@@ -20,6 +20,12 @@ import com.aliucord.views.ToolbarButton
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import com.aliucord.fragments.InputDialog
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.app.AlertDialog
+import android.content.DialogInterface
+import android.widget.TextView
 
 class ReplacerSettings : SettingsPage() {
     val headerId = View.generateViewId()
@@ -74,27 +80,7 @@ class ReplacerSettings : SettingsPage() {
         if (headerBar.findViewById<View>(headerId) == null) {
 
             addHeaderButton("Import", ContextCompat.getDrawable(ctx, Utils.getResId("ic_file_upload_24dp", "drawable"))) {
-                val inDialog = InputDialog()
-                                .setTitle("Import rules")
-                                .setDescription("Paste previously exported rules here")
-                                .setPlaceholderText("Rules JSON")
-                                inDialog.setOnOkListener {
-                                    try {
-                                        replacementRules = GsonUtils
-                                        .fromJson(inDialog.input
-                                            .toString()
-                                            .trim(),
-                                            Array<TextReplacement>::class.java)
-                                        .toMutableList()
-                                    
-                                        inDialog.dismiss()
-                                        close()
-                                    } catch (e: Throwable) {
-                                        Utils.showToast("Error: ${e.message}")
-                                        inDialog.dismiss()
-                                    }
-                                }
-                inDialog.show(parentFragmentManager, "ImportRules")
+                showImportDialog(ctx, recycler)
                 true
             }
             addHeaderButton("Export", ContextCompat.getDrawable(ctx, Utils.getResId("ic_file_download_white_24dp", "drawable"))) {
@@ -105,6 +91,68 @@ class ReplacerSettings : SettingsPage() {
             }
 
         }
+    }
+
+    private fun showImportDialog(ctx: android.content.Context, recycler: RecyclerView) {
+        val container = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val padding = DimenUtils.defaultPadding
+            setPadding(padding, padding, padding, padding)
+        }
+
+        val titleText = TextView(ctx).apply {
+            text = "Import Rules"
+            textSize = 18f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(0, 0, 0, DimenUtils.defaultPadding)
+        }
+        container.addView(titleText)
+
+        val descText = TextView(ctx).apply {
+            text = "Paste previously exported rules here:"
+            setPadding(0, 0, 0, DimenUtils.defaultPadding / 2)
+        }
+        container.addView(descText)
+
+        val editText = EditText(ctx).apply {
+            hint = "Rules JSON"
+            minLines = 8
+            maxLines = 15
+            isVerticalScrollBarEnabled = true
+            setHorizontallyScrolling(false)
+            // Remove any character limits
+            filters = arrayOf()
+        }
+
+        val scrollView = ScrollView(ctx).apply {
+            addView(editText)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                DimenUtils.dpToPx(200)
+            )
+        }
+        container.addView(scrollView)
+
+        AlertDialog.Builder(ctx)
+            .setView(container)
+            .setPositiveButton("Import") { _, _ ->
+                try {
+                    val inputText = editText.text.toString().trim()
+                    if (inputText.isNotEmpty()) {
+                        replacementRules = GsonUtils
+                            .fromJson(inputText, Array<TextReplacement>::class.java)
+                            .toMutableList()
+                        
+                        // Refresh the RecyclerView with new data
+                        recycler.adapter = ReplacerAdapter(this, replacementRules)
+                        Utils.showToast("Rules imported successfully")
+                    }
+                } catch (e: Throwable) {
+                    Utils.showToast("Error importing rules: ${e.message}")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun updateRules(recycler: RecyclerView) {
