@@ -39,8 +39,9 @@ class ReplacerSettings : SettingsPage() {
         val ctx = view.context
         setActionBarTitle("TextReplace")
         
+        val recyclerAdapter = ReplacerAdapter(this@ReplacerSettings, replacementRules)
         val recycler = RecyclerView(ctx).apply {
-            adapter = ReplacerAdapter(this@ReplacerSettings, replacementRules)
+            adapter = recyclerAdapter
             layoutManager = LinearLayoutManager(context, RecyclerView.VERTICAL, false)
 
             val decoration = DividerItemDecoration(ctx, DividerItemDecoration.VERTICAL)
@@ -60,7 +61,7 @@ class ReplacerSettings : SettingsPage() {
             }
             setOnClickListener {
                 replacementRules.add(TextReplacement.emptyRule())
-                recycler.adapter!!.notifyItemInserted(replacementRules.size-1)
+                recyclerAdapter.notifyItemInserted(replacementRules.size-1)
             }
             linearLayout.addView(this)
         }
@@ -80,7 +81,7 @@ class ReplacerSettings : SettingsPage() {
         if (headerBar.findViewById<View>(headerId) == null) {
 
             addHeaderButton("Import", ContextCompat.getDrawable(ctx, Utils.getResId("ic_file_upload_24dp", "drawable"))) {
-                showImportDialog(ctx, recycler)
+                showImportDialog(ctx, recyclerAdapter)
                 true
             }
             addHeaderButton("Export", ContextCompat.getDrawable(ctx, Utils.getResId("ic_file_download_white_24dp", "drawable"))) {
@@ -93,7 +94,7 @@ class ReplacerSettings : SettingsPage() {
         }
     }
 
-    private fun showImportDialog(ctx: android.content.Context, recycler: RecyclerView) {
+    private fun showImportDialog(ctx: android.content.Context, recyclerAdapter: ReplacerAdapter) {
         val container = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val padding = DimenUtils.defaultPadding
@@ -139,12 +140,13 @@ class ReplacerSettings : SettingsPage() {
                 try {
                     val inputText = editText.text.toString().trim()
                     if (inputText.isNotEmpty()) {
-                        replacementRules = GsonUtils
+                        replacementRules.clear()
+                        replacementRules.addAll(GsonUtils
                             .fromJson(inputText, Array<TextReplacement>::class.java)
-                            .toMutableList()
+                            .toList())
                         
-                        // Refresh the RecyclerView with new data
-                        recycler.adapter = ReplacerAdapter(this, replacementRules)
+                        // Notify the adapter that the data has changed
+                        recyclerAdapter.notifyDataSetChanged()
                         Utils.showToast("Rules imported successfully")
                     }
                 } catch (e: Throwable) {

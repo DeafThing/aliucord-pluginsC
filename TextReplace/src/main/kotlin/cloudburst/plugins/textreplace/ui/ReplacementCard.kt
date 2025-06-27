@@ -2,10 +2,12 @@ package cloudburst.plugins.textreplace.ui
 
 import android.content.Context
 import android.view.View
+import android.view.Gravity
 import androidx.cardview.widget.CardView
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputLayout
 import com.aliucord.views.TextInput
+import com.aliucord.views.Button
 import com.aliucord.utils.DimenUtils
 import com.aliucord.utils.ReflectUtils
 import com.discord.utilities.color.ColorCompat
@@ -13,8 +15,10 @@ import com.lytefast.flexinput.R
 import cloudburst.plugins.textreplace.utils.TextReplacement
 import com.discord.views.CheckedSetting
 import com.aliucord.Utils
+import android.widget.LinearLayout
 
 class ReplacerCard(ctx: Context) : MaterialCardView(ctx) {
+    private var onDeleteClick: (() -> Unit)? = null
     val fromInput: TextInput 
     val replacementInput: TextInput 
     val isRegex: CheckedSetting 
@@ -33,11 +37,11 @@ class ReplacerCard(ctx: Context) : MaterialCardView(ctx) {
         }
 
         fromInput = TextInput(ctx)
-        fromInput.setInputHint("From")
+        fromInput.setInputHint("Find text...")
         linearLayout.addView(fromInput)
 
         replacementInput = TextInput(ctx)
-        replacementInput.setInputHint("To")
+        replacementInput.setInputHint("Replace with...")
         linearLayout.addView(replacementInput)
 
         isRegex = Utils.createCheckedSetting(
@@ -60,7 +64,7 @@ class ReplacerCard(ctx: Context) : MaterialCardView(ctx) {
             ctx,
             CheckedSetting.ViewType.SWITCH,
             "Match unsent",
-            "Whether to match unsent messages"
+            "Whether to match unsent messages (user's own messages before they are sent)"
         )
         linearLayout.addView(matchUnsent)
 
@@ -68,7 +72,7 @@ class ReplacerCard(ctx: Context) : MaterialCardView(ctx) {
             ctx,
             CheckedSetting.ViewType.SWITCH,
             "Match sent",
-            "Whether to match sent messages"
+            "Whether to match sent messages (messages from other users)"
         )
         linearLayout.addView(matchSent)
 
@@ -80,9 +84,34 @@ class ReplacerCard(ctx: Context) : MaterialCardView(ctx) {
         )
         linearLayout.addView(matchEmbeds)
 
+        // Add delete button at the bottom with full width and padding
+        val deleteButton = Button(ctx).apply {
+            text = "Delete"
+            setBackgroundColor(ColorCompat.getThemedColor(ctx, R.b.colorStatusDanger))
+            setTextColor(ColorCompat.getThemedColor(ctx, R.b.colorTextNormal))
+            val smallPadding = DimenUtils.defaultPadding / 2
+            setPadding(smallPadding, smallPadding, smallPadding, smallPadding)
+            setOnClickListener { onDeleteClick?.invoke() }
+            
+            // Set layout params to match parent width with some margin
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                // Add some margin on the sides for better appearance
+                val margin = DimenUtils.defaultPadding / 2
+                setMargins(margin, DimenUtils.defaultPadding, margin, 0)
+            }
+        }
+        
+        linearLayout.addView(deleteButton)
+
         addView(linearLayout)
     }
 
+    fun setDeleteCallback(callback: () -> Unit) {
+        onDeleteClick = callback
+    }
 
     fun TextInput.setInputHint(hint: CharSequence) {
         if (this is CardView) {
